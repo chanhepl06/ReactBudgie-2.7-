@@ -25,7 +25,7 @@ module.exports = (env, argv) => {
     ? process.env.QA_PORT
     : process.env.PROD_PORT;
 
-  const publicUrl = "/";
+  const publicUrl = "";
 
   return {
     entry: "./src/index.tsx",
@@ -61,7 +61,14 @@ module.exports = (env, argv) => {
         {
           test: /\.(png|svg|jpg|jpeg|gif|ico)$/,
           exclude: /node_modules/,
-          use: ["file-loader?name=[name].[ext]"],
+          use: [
+            {
+              loader: "file-loader",
+              options: {
+                name: "static/media/[name].[hash].[ext]",
+              },
+            },
+          ],
         },
         {
           test: /\.(woff|woff2|eot|ttf|otf)$/i,
@@ -71,13 +78,16 @@ module.exports = (env, argv) => {
     },
     resolve: {
       extensions: [".tsx", ".ts", ".js"],
+      alias: {
+        "@assets": path.resolve(__dirname, "src/assets"),
+        "@components": path.resolve(__dirname, "src/components"),
+        "@pages": path.resolve(__dirname, "src/pages"),
+        "@utils": path.resolve(__dirname, "src/utils"),
+      },
     },
     plugins: [
       new HtmlWebpackPlugin({
         favicon: "./public/favicon.ico",
-        manifest: "./public/manifest.json",
-        filename: "index.html",
-        inject: "body",
         template: "./public/index.html",
         title: isQA
           ? "QA Webpack App"
@@ -94,13 +104,12 @@ module.exports = (env, argv) => {
       }),
       new WebpackManifestPlugin({
         fileName: "manifest.json",
-        basePath: publicUrl,
-        generate: (seed, files, entries) => {
-          const manifest = files.reduce((manifest, file) => {
+        publicPath: publicUrl,
+        generate: (seed, files) => {
+          return files.reduce((manifest, file) => {
             manifest[file.name] = file.path;
             return manifest;
           }, seed);
-          return manifest;
         },
       }),
     ],
@@ -123,13 +132,17 @@ module.exports = (env, argv) => {
     devServer: {
       static: {
         directory: path.resolve(__dirname, "public"),
-        publicPath: ["/"],
+        publicPath: [publicUrl],
       },
       compress: true,
       port: port,
       open: true,
       hot: true,
-      historyApiFallback: true,
+
+      historyApiFallback: {
+        index: "/dist/index.html",
+      },
+
       allowedHosts: "all",
       headers: {
         "Access-Control-Allow-Origin": "*",

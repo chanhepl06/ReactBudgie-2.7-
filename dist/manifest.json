@@ -1,0 +1,8 @@
+{
+  "main.js": "static/js/main.bundle.js",
+  "static/media/man-with-phone.png": "static/media/man-with-phone.d6766e825c55fdafdfdbccc450d880ee.png",
+  "favicon.ico": "favicon.ico",
+  "static/media/budgie-logo.png": "static/media/budgie-logo.f2de80ed86fcbf66137e889f01d85212.png",
+  "index.html": "index.html",
+  "main.bundle.js.map": "static/js/main.bundle.js.map"
+}
