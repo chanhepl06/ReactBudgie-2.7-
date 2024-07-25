@@ -4,10 +4,15 @@ const webpack = require("webpack");
 const Dotenv = require("dotenv");
 const express = require("express");
 const { WebpackManifestPlugin } = require("webpack-manifest-plugin");
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const TerserPlugin = require("terser-webpack-plugin");
+const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
+const CompressionPlugin = require("compression-webpack-plugin");
+const { BundleAnalyzerPlugin } = require("webpack-bundle-analyzer");
 
 module.exports = (env, argv) => {
   Dotenv.config();
-
+  const publicUrl = process.env.PUBLIC_URL;
   const environment = argv.mode || "development";
   const isDevelopment = environment === "development";
   const isQA = environment === "qa";
@@ -24,8 +29,6 @@ module.exports = (env, argv) => {
     : isQA
     ? process.env.QA_PORT
     : process.env.PROD_PORT;
-
-  const publicUrl = "";
 
   return {
     entry: "./src/index.tsx",
@@ -51,8 +54,9 @@ module.exports = (env, argv) => {
           exclude: /node_modules/,
         },
         {
-          test: /\.scss$/i,
-          use: ["style-loader", "css-loader", "sass-loader"],
+          test: /\.scss$/,
+          use: [MiniCssExtractPlugin.loader, "css-loader", "sass-loader"],
+          exclude: /node_modules/,
         },
         {
           test: /\.css$/i,
@@ -60,15 +64,10 @@ module.exports = (env, argv) => {
         },
         {
           test: /\.(png|svg|jpg|jpeg|gif|ico)$/,
-          exclude: /node_modules/,
-          use: [
-            {
-              loader: "file-loader",
-              options: {
-                name: "static/media/[name].[hash].[ext]",
-              },
-            },
-          ],
+          type: "asset/resource",
+          generator: {
+            filename: "static/media/[name].[hash][ext]",
+          },
         },
         {
           test: /\.(woff|woff2|eot|ttf|otf)$/i,
@@ -79,22 +78,37 @@ module.exports = (env, argv) => {
     resolve: {
       extensions: [".tsx", ".ts", ".js"],
       alias: {
-        "@assets": path.resolve(__dirname, "src/assets"),
-        "@components": path.resolve(__dirname, "src/components"),
-        "@pages": path.resolve(__dirname, "src/pages"),
-        "@utils": path.resolve(__dirname, "src/utils"),
+        "@": path.resolve(__dirname, "src"),
       },
+      modules: [path.resolve(__dirname, "src"), "node_modules"],
     },
     plugins: [
+      new MiniCssExtractPlugin({
+        filename: "static/css/[name].[contenthash].css",
+        chunkFilename: "static/css/[id].[contenthash].css",
+      }),
       new HtmlWebpackPlugin({
         favicon: "./public/favicon.ico",
         template: "./public/index.html",
-        title: isQA
-          ? "QA Webpack App"
-          : isProduction
-          ? "Production Webpack App"
-          : "Development Webpack App",
+        title: "My App",
+        filename: "index.html",
+        minify: isProduction
+          ? {
+              removeComments: true,
+              collapseWhitespace: true,
+              removeRedundantAttributes: true,
+              useShortDoctype: true,
+              removeEmptyAttributes: true,
+              removeStyleLinkTypeAttributes: true,
+              keepClosingSlash: true,
+              minifyJS: true,
+              minifyCSS: true,
+              minifyURLs: true,
+            }
+          : false,
+        publicPath: process.env.PUBLIC_URL || "/",
       }),
+
       new webpack.DefinePlugin({
         "process.env.API_URL": JSON.stringify(apiUrl),
         "process.env.PUBLIC_URL": JSON.stringify(publicUrl),
@@ -104,7 +118,7 @@ module.exports = (env, argv) => {
       }),
       new WebpackManifestPlugin({
         fileName: "manifest.json",
-        publicPath: publicUrl,
+        publicPath: "./",
         generate: (seed, files) => {
           return files.reduce((manifest, file) => {
             manifest[file.name] = file.path;
@@ -112,15 +126,22 @@ module.exports = (env, argv) => {
           }, seed);
         },
       }),
+
+      new BundleAnalyzerPlugin({
+        analyzerMode: "disabled",
+        openAnalyzer: false,
+      }),
+      // Add other plugins as needed
     ],
     output: {
-      filename: "static/js/[name].bundle.js",
-      chunkFilename: "static/js/[name].bundle.js",
+      filename: "static/js/[name].[contenthash].bundle.js",
+      chunkFilename: "static/js/[name].[contenthash].bundle.js",
       assetModuleFilename: "static/media/[hash][ext][query]",
       path: path.resolve(__dirname, "dist"),
       clean: true,
-      publicPath: publicUrl,
+      publicPath: process.env.PUBLIC_URL || "/",
     },
+
     cache: {
       type: "filesystem",
       cacheDirectory: path.resolve(__dirname, "node_modules/.cache"),
@@ -129,38 +150,68 @@ module.exports = (env, argv) => {
       },
       version: "1.0.0",
     },
-    devServer: {
-      static: {
-        directory: path.resolve(__dirname, "public"),
-        publicPath: [publicUrl],
+    optimization: {
+      minimize: true,
+      minimizer: [
+        new TerserPlugin({
+          parallel: true,
+          terserOptions: {
+            compress: {
+              // drop_console: true, // remove console logs
+            },
+          },
+        }),
+        new CssMinimizerPlugin(),
+      ],
+      splitChunks: {
+        chunks: "all",
+        cacheGroups: {
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: "vendors",
+            chunks: "all",
+          },
+          common: {
+            minChunks: 2,
+            name: "common",
+            chunks: "all",
+          },
+        },
       },
-      compress: true,
-      port: port,
-      open: true,
-      hot: true,
-
-      historyApiFallback: {
-        index: "/dist/index.html",
+    },
+    ...(isDevelopment && {
+      devServer: {
+        static: {
+          directory: path.resolve(__dirname, "public"),
+          publicPath: process.env.PUBLIC_URL || "/",
+        },
+        compress: true,
+        port: port,
+        open: true,
+        hot: true,
+        historyApiFallback: true,
+        allowedHosts: "all",
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods":
+            "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+          "Access-Control-Allow-Headers":
+            "X-Requested-With, content-type, Authorization",
+        },
+        setupMiddlewares: (middlewares, devServer) => {
+          const app = devServer.app;
+          app.use(
+            "/api",
+            express.static(path.resolve(__dirname, "node_modules/.cache"))
+          );
+          return middlewares;
+        },
       },
-
-      allowedHosts: "all",
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods":
-          "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-        "Access-Control-Allow-Headers":
-          "X-Requested-With, content-type, Authorization",
-      },
-      setupMiddlewares: (middlewares, devServer) => {
-        const app = devServer.app;
-
-        app.use(
-          "/api",
-          express.static(path.resolve(__dirname, "node_modules/.cache"))
-        );
-
-        return middlewares;
-      },
+    }),
+    performance: {
+      hints: false,
+      maxEntrypointSize: 512000,
+      maxAssetSize: 512000,
     },
   };
 };
