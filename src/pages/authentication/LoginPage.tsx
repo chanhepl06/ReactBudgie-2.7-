@@ -9,10 +9,12 @@ import {
   Grid,
 } from "@mui/material";
 import React, { Fragment, useState, useEffect } from "react";
-import logo from "@assets/logo/budgie-logo.png";
-import manWithPhone from "@assets/logo/man-with-phone.png";
+import logo from "@/assets/logo/budgie-logo.png";
+import manWithPhone from "@/assets/logo/man-with-phone.png";
 import { TypeAnimation } from "react-type-animation";
-
+import { redirect } from "react-router-dom";
+import { url } from "inspector";
+type RedirectFunction = (url: string, init?: number | ResponseInit) => Response;
 const LoginPage: React.FC = () => {
   const [textColor, setTextColor] = useState("green");
   const [sequenceIndex, setSequenceIndex] = useState(0);
@@ -27,17 +29,20 @@ const LoginPage: React.FC = () => {
     const colorInterval = setInterval(() => {
       setTextColor(colors[sequenceIndex]);
       setSequenceIndex((prevIndex) => (prevIndex + 1) % colors.length);
-    }, 4000); // 4 seconds for color change
-
+    }, 4000);
     return () => clearInterval(colorInterval);
   }, [sequenceIndex]);
 
   const handleLogin = (event: React.FormEvent) => {
+    console.log("employeeId", employeeId);
+
     event.preventDefault();
     // Handle login logic here
     console.log("Employee ID:", employeeId);
     console.log("Password:", password);
     console.log("Remember Me:", rememberMe);
+
+    redirect("/contacts");
   };
 
   return (
@@ -60,7 +65,7 @@ const LoginPage: React.FC = () => {
                 padding: "20px",
                 justifyContent: "center",
                 alignItems: "center",
-                background: "lightgreen",
+                // background: "lightgreen",
               }}
             >
               <Typography variant="h3" component={"h1"}>
@@ -102,7 +107,7 @@ const LoginPage: React.FC = () => {
                 flexDirection: "row",
                 alignItems: "center",
                 padding: "20px",
-                background: "lightblue",
+                // background: "lightblue",
               }}
             >
               <img
@@ -121,7 +126,7 @@ const LoginPage: React.FC = () => {
                   padding: "20px",
                   width: "100%",
                   maxWidth: "400px",
-                  background: "LIGHTYELLOW",
+                  // background: "LIGHTYELLOW",
                 }}
               >
                 <form onSubmit={handleLogin}>
