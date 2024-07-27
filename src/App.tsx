@@ -7,7 +7,10 @@ import {
 } from "react-router-dom";
 import Root from "@/routes/root";
 import LoginPage from "@/pages/authentication/LoginPage";
+import { ThemeProvider } from "@mui/styles";
+import ResponsiveAppBar from "@/routes/root";
 import Card from "@/components/Card";
+import DashBoard from "@/pages/dashboard/DashboardPage";
 
 interface Error {
   message: string;
@@ -24,32 +27,21 @@ function App() {
   const router = createBrowserRouter([
     {
       path: "/",
-      element: <LoginPage />,
+      element: <Root />,
       errorElement: <ErrorBoundary />,
       children: [
         {
-          path: "contacts",
-          element: <Root />,
+          path: "/contacts",
+          element: <LoginPage />,
         },
         {
-          path: "abouts",
-          element: (
-            <Card
-              title="About Page"
-              content="This is About Page"
-              imageUrl="https://picsum.photos/20/20"
-            />
-          ),
+          path: "/abouts",
+          element: <DashBoard />,
         },
       ],
     },
   ]);
 
-  return (
-    <div className="App">
-      <RouterProvider router={router} />
-    </div>
-  );
+  return <RouterProvider router={router} />;
 }
-
 export default App;
